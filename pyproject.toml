@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "msf-trader"
+version = "0.1.0"
+description = "Local-first ingestion of trading-course videos into a cited knowledge base and strategy docs."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "typer>=0.12.0",
+  "pydantic>=2.7.0",
+  "pyyaml>=6.0",
+  "python-dotenv>=1.0.1",
+  "rich>=13.7.0",
+  "faster-whisper>=1.0.3",
+  "scenedetect>=0.6.4",
+  "opencv-python>=4.9.0",
+  "Pillow>=10.3.0",
+  "pytesseract>=0.3.10",
+  "rank-bm25>=0.2.2",
+  "yfinance>=0.2.40",
+  "databento>=0.79.0",
+  "openai>=1.30.0",
+  "anthropic>=0.28.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+msf-trader = "msf_trader.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

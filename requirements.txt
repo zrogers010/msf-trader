@@ -1,0 +1,28 @@
+# Core
+typer>=0.12.0
+pydantic>=2.7.0
+pyyaml>=6.0
+python-dotenv>=1.0.1
+rich>=13.7.0
+
+# Transcription (local, Apple Silicon friendly)
+faster-whisper>=1.0.3
+
+# Frames / scene detection / images
+scenedetect>=0.6.4
+opencv-python>=4.9.0
+Pillow>=10.3.0
+
+# OCR
+pytesseract>=0.3.10
+
+# Retrieval (local-first, no DB)
+rank-bm25>=0.2.2
+
+# Backtesting data (Phase 2). yfinance = prototype; databento = real /ES futures.
+yfinance>=0.2.40
+databento>=0.79.0
+
+# Cloud LLM providers (vision + reasoning). Install the one you use.
+openai>=1.30.0
+anthropic>=0.28.0

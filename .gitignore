@@ -1,0 +1,54 @@
+# ---------------------------------------------------------------------------
+# PRIVACY: keep ALL course material and anything derived from it OUT of git.
+# Only source code and sanitized examples should ever be committed.
+# ---------------------------------------------------------------------------
+
+# Course videos + everything extracted/derived from them
+data/
+# generated docs contain course content + filenames
+docs/
+
+# Real config holds the actual video filenames -> use config.example.yaml instead
+config.yaml
+
+# Media / transcript / frame artifacts anywhere in the tree (belt-and-suspenders)
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.wav
+*.mp3
+*.m4a
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.npy
+transcript.json
+frames.json
+visual_notes.json
+notes.json
+kb.jsonl
+
+# Secrets
+.env
+*.key
+
+# Runtime state + logs (paper account / position counters / daily run logs)
+logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

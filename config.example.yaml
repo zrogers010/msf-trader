@@ -1,0 +1,68 @@
+# Course ingestion configuration -- EXAMPLE / TEMPLATE.
+#
+# Copy this to `config.yaml` (which is gitignored) and fill in your own course
+# details. `config.yaml` is intentionally NOT committed because it would contain
+# your real video filenames.
+#
+#   cp config.example.yaml config.yaml
+#
+# Map each .mp4 to a module and chapter order. Either list filenames explicitly
+# under each module's `files:` (recommended for exact ordering) or rely on the
+# `match:` substring (case-insensitive) on the filename.
+
+course:
+  title: "My Trading Course"
+  instrument: "E-mini S&P 500 futures (/ES)"
+  trading_style: "Day trading / intraday"
+
+paths:
+  videos_dir: "data/videos"     # put your .mp4 files here
+  work_dir: "data/work"         # per-video intermediate artifacts
+  kb_dir: "data/kb"             # aggregated knowledge base
+  index_dir: "data/index"       # retrieval index
+  docs_dir: "docs"              # generated markdown docs
+
+transcription:
+  model: "medium"               # tiny|base|small|medium|large-v3
+  compute_type: "int8"          # int8 (Apple Silicon friendly), int8_float16, float16
+  language: "en"
+  word_timestamps: true
+
+frames:
+  scene_threshold: 27.0         # PySceneDetect content-detector threshold
+  periodic_seconds: 30          # sample the chart/slide every N seconds
+  min_gap_seconds: 10           # merge candidate frames closer than this
+  max_vision_frames: 60         # max frames per video sent to the vision LLM
+
+ocr:
+  enabled: true
+  min_text_chars: 8
+
+llm:
+  provider: "openai"            # overridden by env MSF_LLM_PROVIDER
+  max_output_tokens: 4000
+  temperature: 0.1
+
+qa:
+  top_k: 25
+
+retrieval:
+  use_embeddings: true          # BM25 + embeddings (RRF). Requires OpenAI provider.
+  embedding_model: "text-embedding-3-small"
+  candidate_pool: 50
+
+# Module -> files mapping. Chapter order is the order files are listed here.
+# Replace the placeholders below with your own module names and .mp4 filenames.
+modules:
+  - name: "Module One"
+    order: 1
+    files: []                   # e.g. ["01-intro.mp4"]
+    match: "module1"            # fallback substring match on filename
+  - name: "Module Two"
+    order: 2
+    files: []
+    match: "module2"
+  - name: "Module Three"
+    order: 3
+    files: []
+    match: "module3"

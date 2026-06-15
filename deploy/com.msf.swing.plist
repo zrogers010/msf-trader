@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd job for the daily RSI(2) swing run on the Mac Mini.
+
+  SETUP:
+    1. Edit the two absolute paths below to match the repo location on the Mini.
+    2. The Hour/Minute below are in the Mac's LOCAL timezone. launchd triggers on
+       system local time, NOT the TZ env var. Set them to whatever 15:45 ET is on
+       that machine (e.g. 12:45 if the Mini is on Pacific), or set the Mini's
+       timezone to America/New_York and keep 15/45.
+    3. Install:
+         cp deploy/com.msf.swing.plist ~/Library/LaunchAgents/
+         launchctl load ~/Library/LaunchAgents/com.msf.swing.plist
+       Trigger a manual test run:
+         launchctl start com.msf.swing
+       Remove:
+         launchctl unload ~/Library/LaunchAgents/com.msf.swing.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.msf.swing</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/zach/code/src/msf-trader/scripts/run_swing.sh</string>
+  </array>
+
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>45</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>45</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>45</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>45</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>45</integer></dict>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>TZ</key>
+    <string>America/New_York</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/Users/zach/code/src/msf-trader/logs/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/zach/code/src/msf-trader/logs/launchd.err.log</string>
+</dict>
+</plist>
