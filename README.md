@@ -1,16 +1,13 @@
 # msf-trader — Course Ingestion System
 
-Local-first pipeline that ingests `.mp4` lectures from a trading-education course
-(E-mini S&P 500 / `/ES` intraday day trading), extracts **spoken** and **visual**
-information, builds a **timestamp-cited knowledge base**, and generates a formal
-**strategy playbook** plus supporting docs. It also provides a **CLI Q&A
-assistant** that answers questions with citations into the videos.
+Local-first pipeline that ingests video lectures from a course, extracts
+**spoken** and **visual** information, builds a **timestamp-cited knowledge
+base**, and generates structured notes. It also provides a **CLI Q&A assistant**
+that answers questions with citations back into the source videos.
 
 > Scope (v1): understanding, extraction, citation, and rule formalization only.
-> There is **no** live trading, brokerage integration, or order execution. The
-> strategy is **not** assumed to be profitable and has not been validated.
-> Inferred interpretations are kept separate from explicit course rules, and no
-> missing rules are invented.
+> Inferred interpretations are kept separate from explicit source rules, and no
+> missing rules are invented. All source material stays local (see Privacy).
 
 ## How it works
 
@@ -18,7 +15,7 @@ assistant** that answers questions with citations into the videos.
 .mp4 ──ffmpeg──► audio.wav ──faster-whisper──► timestamped transcript
  │
  └─PySceneDetect─► representative frames ──tesseract OCR──► text layer
-                                          └─vision LLM────► chart/slide/setup notes
+                                          └─vision LLM────► chart/slide notes
                                                             │
 transcript + visual notes ──LLM──► cited KB items (confirmed vs inferred)
                                    │
@@ -96,25 +93,21 @@ Re-running skips cached stages. Use `--overwrite` to recompute a stage.
 
 - `COURSE_MAP.md` — modules, chapters, durations, item counts.
 - `MODULE_SUMMARIES.md` — per-module cited summaries.
-- `STRATEGY_PLAYBOOK.md` — narrative of the method as taught.
-- `STRATEGY_RULES.md` — objective rules (instrument, sessions, context, setups,
-  entries, stops, targets, management, invalidation, risk, no-trade, examples,
-  ambiguities), each tagged CONFIRMED / INFERRED with a citation.
-- `BACKTEST_PLAN.md` — how the strategy *could* be tested later (data, timeframe,
-  indicators, assumptions to avoid, slippage/commissions, out-of-sample,
-  walk-forward, paper trading, risk controls). Spec only — no backtester yet.
+- `STRATEGY_PLAYBOOK.md` — narrative synthesis of the source material.
+- `STRATEGY_RULES.md` — objective rules extracted from the source, each tagged
+  CONFIRMED / INFERRED with a citation.
+- `BACKTEST_PLAN.md` — how the approach *could* be tested later (data, assumptions
+  to avoid, costs, out-of-sample, walk-forward, risk controls). Spec only.
 - `AMBIGUITIES_AND_OPEN_QUESTIONS.md` — underspecified / contradictory points.
 
 ## Ask questions
 
 ```bash
-msf-trader ask "What are the exact entry rules?"
-msf-trader ask "What does the course say about managing trades?"
-msf-trader ask "What indicators are used and why?" --show-evidence
-msf-trader ask "When should I avoid trading?"
+msf-trader ask "What are the key rules?"
+msf-trader ask "Summarize what module 2 covers." --show-evidence
 ```
 
-Answers cite `[file @ mm:ss]` and flag each rule as EXPLICIT or INFERRED. If the
+Answers cite `[file @ mm:ss]` and flag each item as EXPLICIT or INFERRED. If the
 evidence doesn't cover the question, the assistant says so instead of guessing.
 
 Retrieval is hybrid: BM25 (keyword) fused with OpenAI embeddings (semantic) via
@@ -124,11 +117,9 @@ false` (or use the Anthropic provider) to fall back to BM25-only.
 
 ## Backtest (Phase 2)
 
-Simulation only — no orders are ever placed, and the strategy is **not assumed
-profitable**. The engine executes the human-reviewed rules in
-`docs/STRATEGY_RULES_REVIEWED.md`. Parameters the course never specified
-(session clock times, S/R definition, runner trail, costs) are explicit,
-tunable assumptions in `backtest/spec.py` and are printed with every run.
+Simulation only — no orders are ever placed. The engine executes a set of
+human-reviewed rules. Any parameters not explicitly specified by the source are
+explicit, tunable assumptions in `backtest/spec.py` and are printed with every run.
 
 ```bash
 # 1a) prototype bars (free yfinance, ~60d of /ES resampled to 10m)
@@ -156,22 +147,18 @@ msf-trader compare-data --a data/market/ES_10m.csv --b data/market/SPY_es_equiv_
 ```
 
 The `sweep` command re-runs the backtest across a grid of the assumption
-parameters (S/R strength, proximity, trade size, runner trail). If net P&L flips
-sign across the grid, the "edge" is in the assumptions, not the course — treat
-the baseline number with suspicion.
+parameters. If net P&L flips sign across the grid, the "edge" is in the
+assumptions rather than the rules — treat the baseline number with suspicion.
 
-`fetch-data` is for wiring/sanity only (Yahoo intraday is capped at ~60 days and
-is not a clean continuous contract). For a sample big enough to actually evaluate
-the strategy, use `fetch-spy` (Alpha Vantage, ~2 years) or a vendor CSV
-(`timestamp,open,high,low,close,volume`) via `normalize-data`; see
-`docs/BACKTEST_PLAN.md` for sources and the SPY⇄/ES contract math. Because SPY and
-/ES proxy the same index, comparing the backtest on both is a useful robustness
-check (they should agree if the edge is real). Market data lands in
-`data/market/` and stays gitignored.
+`fetch-data` is for wiring/sanity only (Yahoo intraday is capped at ~60 days).
+For a sample big enough to actually evaluate, use Databento (`fetch-es`), Alpaca
+(`fetch-alpaca`), or a vendor CSV via `normalize-data`. Comparing the same
+strategy on /ES and a SPY-equivalent is a useful robustness check (they should
+agree if the edge is real). Market data lands in `data/market/` and stays gitignored.
 
 ## Profitable strategy: RSI(2) swing (Phase 3)
 
-The course's intraday method showed **no durable edge** on /ES or any equity/ETF,
+The intraday methods tested showed **no durable edge** on /ES or any equity/ETF,
 and a rigorous cross-family search (opening-range breakout, intraday momentum,
 VWAP mean-reversion) found nothing that survives realistic costs + execution on
 full-volume data. The one strategy that *did* validate out-of-sample is a
