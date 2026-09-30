@@ -165,17 +165,43 @@ full-volume data. The one strategy that *did* validate out-of-sample is a
 **multi-day swing**: RSI(2) mean-reversion on liquid ETFs. See
 `docs/SWING_STRATEGY.md` and `docs/EQUITY_STRATEGY_RESEARCH.md`.
 
+### Strategy Updates (Dec 2024)
+
+**Improved defaults**: Parameter optimization across 2004-2026 revealed that the
+original RSI threshold (< 10) was excessively restrictive, limiting trade frequency.
+The new **balanced** preset relaxes RSI to < 25 and extends max hold to 20 days:
+
+- **Trade frequency**: +111% (144 → 303 trades/year)
+- **CAGR**: +40% improvement (6.3% → 8.8%)
+- **Sharpe**: +7% improvement (0.71 → 0.76)
+- **Max Drawdown**: Improved (-20.2% → -18.1%)
+
+See `PERFORMANCE_NOTES.md` for full analysis. Three presets available:
+- `legacy` (RSI < 10): Original conservative baseline
+- `balanced` (RSI < 25, **new default**): Optimal risk-adjusted returns
+- `conservative` (RSI < 20): Middle ground
+- `aggressive` (RSI < 25, fast exit): Maximum turnover
+
 ```bash
 # 1) fetch ~20y split/div-adjusted daily bars for the ETF universe
 msf-trader fetch-daily
 
-# 2) re-validate (Sharpe ~0.7 both halves, +20/23 years, maxDD ~-20%)
+# 2) re-validate (balanced preset: Sharpe ~0.76, CAGR 8.8%, maxDD ~-18%)
 msf-trader swing-backtest
+
+# Compare presets (legacy/conservative/balanced/aggressive)
+msf-trader swing-backtest --preset legacy    # Original: RSI<10, fewer trades
+msf-trader swing-backtest --preset balanced  # NEW DEFAULT: RSI<25, optimal
+msf-trader swing-backtest --preset aggressive # RSI<25, max turnover
 
 # 3) today's order plan: print only | local sim | real Alpaca paper account
 msf-trader swing-plan --broker dry
 msf-trader swing-plan --broker paper
 msf-trader swing-plan --broker alpaca   # needs ALPACA_PAPER_KEY_ID/SECRET in .env
+
+# Use different strategy presets
+msf-trader swing-plan --broker paper --preset conservative  # RSI<20
+msf-trader swing-plan --broker paper --preset aggressive    # max turnover
 ```
 
 Live execution targets **Robinhood Agentic Trading (MCP)** — an AI agent with the

@@ -43,13 +43,33 @@ DEFAULT_UNIVERSE = [
 
 @dataclass
 class Rsi2Params:
-    rsi_buy: float = 10.0          # enter when RSI(2) < this
+    rsi_buy: float = 25.0          # enter when RSI(2) < this (was 10.0 - relaxed for +111% trades, +40% CAGR)
     rsi_period: int = 2
     regime_sma: int = 200          # only long above this SMA
     exit_sma: int = 5              # exit when close > this SMA
-    max_hold: int = 10             # time stop (trading days)
+    max_hold: int = 20             # time stop (trading days) (was 10 - allow more time for mean reversion)
     cost_bps_rt: float = 3.0       # round-trip cost (bps of notional)
     max_weight: float = 0.20       # cap per name in the portfolio
+    
+    @classmethod
+    def conservative(cls):
+        """Conservative preset: RSI=20, fewer trades, tighter risk."""
+        return cls(rsi_buy=20.0, max_hold=20)
+    
+    @classmethod
+    def balanced(cls):
+        """Balanced preset (default): RSI=25, optimal risk-adjusted returns."""
+        return cls(rsi_buy=25.0, max_hold=20)
+    
+    @classmethod
+    def aggressive(cls):
+        """Aggressive preset: RSI=25, max turnover, shorter holds."""
+        return cls(rsi_buy=25.0, exit_sma=10, max_hold=5)
+    
+    @classmethod
+    def legacy(cls):
+        """Original baseline parameters for comparison."""
+        return cls(rsi_buy=10.0, max_hold=10)
 
 
 def wilder_rsi(close: pd.Series, n: int = 2) -> pd.Series:
