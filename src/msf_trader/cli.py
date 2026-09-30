@@ -434,19 +434,33 @@ def fetch_daily_cmd(
 @app.command(name="swing-backtest")
 def swing_backtest(
     data_dir: str = typer.Option("data/market", "--data-dir", help="Dir with {SYM}_daily.csv"),
-    rsi_buy: float = typer.Option(10.0, "--rsi-buy", help="Enter when RSI(2) < this"),
+    rsi_buy: float = typer.Option(None, "--rsi-buy", help="Enter when RSI(2) < this (overrides preset)"),
     no_regime: bool = typer.Option(False, "--no-regime", help="Disable the 200-SMA filter"),
+    preset: str = typer.Option("balanced", "--preset", help="Parameter preset: legacy/conservative/balanced/aggressive"),
 ):
     """Backtest the RSI(2) swing portfolio over the daily-bar universe."""
     from .swing import Rsi2Params, portfolio_backtest
 
-    p = Rsi2Params(rsi_buy=rsi_buy)
+    # Load preset
+    if preset == "legacy":
+        p = Rsi2Params.legacy()
+    elif preset == "conservative":
+        p = Rsi2Params.conservative()
+    elif preset == "aggressive":
+        p = Rsi2Params.aggressive()
+    else:
+        p = Rsi2Params.balanced()
+    
+    # Override RSI if specified
+    if rsi_buy is not None:
+        p.rsi_buy = rsi_buy
+    
     res = portfolio_backtest(data_dir=data_dir, p=p, regime=not no_regime)
     console.print(
         "[bold red]Research backtest only.[/bold red] Past performance is not indicative "
         "of future results; forward/paper-test before risking capital."
     )
-    table = Table(title="RSI(2) swing portfolio")
+    table = Table(title=f"RSI(2) swing portfolio ({preset} preset)")
     table.add_column("Metric")
     table.add_column("Value", justify="right")
     table.add_row("CAGR", f"{res.cagr*100:.1f}%")
@@ -457,6 +471,11 @@ def swing_backtest(
     console.print(table)
     pos = sum(1 for v in res.by_year.values() if v > 0)
     console.print(f"[dim]Positive in {pos}/{len(res.by_year)} calendar years.[/dim]")
+    
+    # Show parameter details
+    console.print(f"\n[dim]Parameters: RSI<{p.rsi_buy}, exit_sma={p.exit_sma}, max_hold={p.max_hold}d[/dim]")
+    total_trades = sum(res.trades_per_instrument.values())
+    console.print(f"[dim]Total trades: {total_trades} ({total_trades/23:.0f} per year)[/dim]")
 
 
 @app.command(name="swing-plan")
@@ -466,7 +485,8 @@ def swing_plan(
     target_positions: int = typer.Option(6, "--slots", help="Concurrent position slots"),
     max_weight: float = typer.Option(0.167, "--max-weight", help="Per-name cap as a fraction of equity (e.g. 0.167 ~= 6 names)"),
     dollars: float = typer.Option(0.0, "--dollars", help="Fixed $ per trade instead of %-of-equity (e.g. 1000). 0 = use --max-weight"),
-    rsi_buy: float = typer.Option(10.0, "--rsi-buy"),
+    rsi_buy: float = typer.Option(None, "--rsi-buy", help="RSI entry threshold (overrides preset)"),
+    preset: str = typer.Option("balanced", "--preset", help="Parameter preset: legacy/conservative/balanced/aggressive"),
     state: str = typer.Option("data/paper_account.json", "--state", help="Local paper account state file"),
     force: bool = typer.Option(False, "--force", help="Place Alpaca orders even when the market is closed (overrides the clock guard)"),
 ):
@@ -483,13 +503,28 @@ def swing_plan(
     if broker not in ("dry", "paper", "alpaca"):
         raise typer.BadParameter("--broker must be one of: dry, paper, alpaca")
 
+    # Load preset
+    if preset == "legacy":
+        p = Rsi2Params.legacy()
+    elif preset == "conservative":
+        p = Rsi2Params.conservative()
+    elif preset == "aggressive":
+        p = Rsi2Params.aggressive()
+    else:
+        p = Rsi2Params.balanced()
+    
+    # Override RSI and max_weight if specified
+    if rsi_buy is not None:
+        p.rsi_buy = rsi_buy
+    p.max_weight = max_weight
+
     market_closed = False
     if broker == "alpaca":
         from .swing.broker import AlpacaPaperBroker
         market_closed = not AlpacaPaperBroker().is_market_open() and not force
 
     plan = run_daily(
-        params=Rsi2Params(rsi_buy=rsi_buy, max_weight=max_weight),
+        params=p,
         target_positions=target_positions,
         broker=broker,
         offline=offline,
