@@ -157,19 +157,33 @@ class AlpacaPaperBroker:
     def __init__(self, state_path: str | Path = "data/alpaca_paper_state.json",
                  key_id: str | None = None, secret: str | None = None):
         from dotenv import load_dotenv
+        import sys
         load_dotenv()
-        self.key = key_id or os.environ.get("ALPACA_PAPER_KEY_ID") or os.environ.get("APCA_API_KEY_ID")
-        self.secret = secret or os.environ.get("ALPACA_PAPER_SECRET_KEY") or os.environ.get("APCA_API_SECRET_KEY")
-        self._used_fallback = (
-            not os.environ.get("ALPACA_PAPER_KEY_ID") and 
-            bool(os.environ.get("APCA_API_KEY_ID"))
-        )
+        
+        paper_key = os.environ.get("ALPACA_PAPER_KEY_ID")
+        paper_secret = os.environ.get("ALPACA_PAPER_SECRET_KEY")
+        fallback_key = os.environ.get("APCA_API_KEY_ID")
+        fallback_secret = os.environ.get("APCA_API_SECRET_KEY")
+        
+        self.key = key_id or paper_key or fallback_key
+        self.secret = secret or paper_secret or fallback_secret
+        self._used_fallback = not paper_key and bool(fallback_key)
+        
         if not self.key or not self.secret:
             raise RuntimeError(
                 "Alpaca paper keys not set. Generate PAPER trading keys at "
                 "https://app.alpaca.markets/ (Paper Trading -> API keys) and add "
                 "ALPACA_PAPER_KEY_ID / ALPACA_PAPER_SECRET_KEY to .env."
             )
+        
+        if self._used_fallback:
+            print(
+                "WARNING: ALPACA_PAPER_KEY_ID not set, falling back to APCA_API_KEY_ID.\n"
+                "If you see 401 errors, your data keys may not have paper trading permissions.\n"
+                "Generate paper-specific keys at https://app.alpaca.markets/ -> Paper Trading -> API Keys",
+                file=sys.stderr
+            )
+        
         self.state_path = Path(state_path)
         self._holds = json.loads(self.state_path.read_text()) if self.state_path.exists() else {}
 
@@ -197,9 +211,13 @@ class AlpacaPaperBroker:
                     )
                 else:
                     msg += (
-                        "LIKELY CAUSE: Paper trading keys are invalid, expired, or revoked.\n"
-                        "Verify/regenerate keys at https://app.alpaca.markets/ -> Paper Trading -> API Keys\n"
-                        "and update ALPACA_PAPER_KEY_ID / ALPACA_PAPER_SECRET_KEY in .env"
+                        "LIKELY CAUSE: Paper trading keys (ALPACA_PAPER_*) are invalid, expired, or revoked.\n\n"
+                        "Fix options:\n"
+                        "1. Regenerate keys at https://app.alpaca.markets/ -> Paper Trading -> API Keys\n"
+                        "   and update ALPACA_PAPER_KEY_ID / ALPACA_PAPER_SECRET_KEY in .env\n"
+                        "2. If your APCA_API_KEY_ID has paper trading permissions, sync:\n"
+                        "   ALPACA_PAPER_KEY_ID=$APCA_API_KEY_ID\n"
+                        "   ALPACA_PAPER_SECRET_KEY=$APCA_API_SECRET_KEY"
                     )
                 raise RuntimeError(msg) from e
             raise RuntimeError(f"Alpaca {method} {path} -> {e.code}: {error_body}") from e
