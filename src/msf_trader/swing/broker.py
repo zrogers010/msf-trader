@@ -160,6 +160,10 @@ class AlpacaPaperBroker:
         load_dotenv()
         self.key = key_id or os.environ.get("ALPACA_PAPER_KEY_ID") or os.environ.get("APCA_API_KEY_ID")
         self.secret = secret or os.environ.get("ALPACA_PAPER_SECRET_KEY") or os.environ.get("APCA_API_SECRET_KEY")
+        self._used_fallback = (
+            not os.environ.get("ALPACA_PAPER_KEY_ID") and 
+            bool(os.environ.get("APCA_API_KEY_ID"))
+        )
         if not self.key or not self.secret:
             raise RuntimeError(
                 "Alpaca paper keys not set. Generate PAPER trading keys at "
@@ -181,7 +185,24 @@ class AlpacaPaperBroker:
                 txt = resp.read().decode()
                 return json.loads(txt) if txt else {}
         except urllib.error.HTTPError as e:
-            raise RuntimeError(f"Alpaca {method} {path} -> {e.code}: {e.read().decode()[:300]}") from e
+            error_body = e.read().decode()[:300]
+            if e.code == 401:
+                msg = f"Alpaca {method} {path} -> 401 Unauthorized: {error_body}\n\n"
+                if self._used_fallback:
+                    msg += (
+                        "LIKELY CAUSE: Using data-only keys (APCA_API_KEY_ID/SECRET) for paper trading.\n"
+                        "Paper trading requires SEPARATE keys: generate them at\n"
+                        "https://app.alpaca.markets/ -> Paper Trading -> API Keys\n"
+                        "and set ALPACA_PAPER_KEY_ID / ALPACA_PAPER_SECRET_KEY in .env"
+                    )
+                else:
+                    msg += (
+                        "LIKELY CAUSE: Paper trading keys are invalid, expired, or revoked.\n"
+                        "Verify/regenerate keys at https://app.alpaca.markets/ -> Paper Trading -> API Keys\n"
+                        "and update ALPACA_PAPER_KEY_ID / ALPACA_PAPER_SECRET_KEY in .env"
+                    )
+                raise RuntimeError(msg) from e
+            raise RuntimeError(f"Alpaca {method} {path} -> {e.code}: {error_body}") from e
 
     # --- account ---------------------------------------------------------
     def _account(self) -> dict:

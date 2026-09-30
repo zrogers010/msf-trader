@@ -208,6 +208,43 @@ time — set the plist Hour/Minute to whatever 15:45 ET is locally, or set the m
 to `America/New_York`. Run from the repo root so `data/alpaca_paper_state.json` (the
 time-stop counter) persists.
 
+## Troubleshooting
+
+### Alpaca 401 Unauthorized on /v2/clock
+
+**Symptom:** Paper trading fails with `Alpaca GET /v2/clock -> 401 Unauthorized`
+
+**Root Cause:** Alpaca requires **separate API credentials** for different services:
+- `APCA_API_KEY_ID` / `APCA_API_SECRET_KEY` → Market data only (data.alpaca.markets)
+- `ALPACA_PAPER_KEY_ID` / `ALPACA_PAPER_SECRET_KEY` → Paper trading (paper-api.alpaca.markets)
+
+Data-only keys will NOT work for paper trading endpoints.
+
+**Fix:**
+1. Generate paper trading keys at https://app.alpaca.markets/
+   - Navigate to **Paper Trading → API Keys**
+   - Create a new key pair (or regenerate existing ones)
+2. Update your `.env` file:
+   ```bash
+   ALPACA_PAPER_KEY_ID=PK... # from paper trading section
+   ALPACA_PAPER_SECRET_KEY=... # from paper trading section
+   ```
+3. Test the connection:
+   ```bash
+   msf-trader swing-plan --broker alpaca --dollars 100 --slots 1
+   ```
+
+**Verify which keys are in use:**
+```bash
+# Data keys (for backtesting market data)
+echo "Data key: ${APCA_API_KEY_ID:0:8}..." 
+
+# Paper trading keys (for swing-plan --broker alpaca)
+echo "Paper key: ${ALPACA_PAPER_KEY_ID:0:8}..."
+```
+
+If `ALPACA_PAPER_KEY_ID` is empty, the code falls back to `APCA_API_KEY_ID` (data-only) → 401 error.
+
 ## Data layout
 
 ```
