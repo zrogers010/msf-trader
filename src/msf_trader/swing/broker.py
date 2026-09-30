@@ -157,15 +157,33 @@ class AlpacaPaperBroker:
     def __init__(self, state_path: str | Path = "data/alpaca_paper_state.json",
                  key_id: str | None = None, secret: str | None = None):
         from dotenv import load_dotenv
+        import sys
         load_dotenv()
-        self.key = key_id or os.environ.get("ALPACA_PAPER_KEY_ID") or os.environ.get("APCA_API_KEY_ID")
-        self.secret = secret or os.environ.get("ALPACA_PAPER_SECRET_KEY") or os.environ.get("APCA_API_SECRET_KEY")
+        
+        paper_key = os.environ.get("ALPACA_PAPER_KEY_ID")
+        paper_secret = os.environ.get("ALPACA_PAPER_SECRET_KEY")
+        fallback_key = os.environ.get("APCA_API_KEY_ID")
+        fallback_secret = os.environ.get("APCA_API_SECRET_KEY")
+        
+        self.key = key_id or paper_key or fallback_key
+        self.secret = secret or paper_secret or fallback_secret
+        self._used_fallback = not paper_key and bool(fallback_key)
+        
         if not self.key or not self.secret:
             raise RuntimeError(
                 "Alpaca paper keys not set. Generate PAPER trading keys at "
                 "https://app.alpaca.markets/ (Paper Trading -> API keys) and add "
                 "ALPACA_PAPER_KEY_ID / ALPACA_PAPER_SECRET_KEY to .env."
             )
+        
+        if self._used_fallback:
+            print(
+                "WARNING: ALPACA_PAPER_KEY_ID not set, falling back to APCA_API_KEY_ID.\n"
+                "If you see 401 errors, your data keys may not have paper trading permissions.\n"
+                "Generate paper-specific keys at https://app.alpaca.markets/ -> Paper Trading -> API Keys",
+                file=sys.stderr
+            )
+        
         self.state_path = Path(state_path)
         self._holds = json.loads(self.state_path.read_text()) if self.state_path.exists() else {}
 
@@ -181,7 +199,26 @@ class AlpacaPaperBroker:
                 txt = resp.read().decode()
                 return json.loads(txt) if txt else {}
         except urllib.error.HTTPError as e:
-            raise RuntimeError(f"Alpaca {method} {path} -> {e.code}: {e.read().decode()[:300]}") from e
+            error_body = e.read().decode()[:300]
+            if e.code == 401:
+                msg = f"Alpaca {method} {path} -> 401 Unauthorized: {error_body}\n\n"
+                if self._used_fallback:
+                    msg += (
+                        "LIKELY CAUSE: Using data-only keys (APCA_API_KEY_ID/SECRET) for paper trading.\n"
+                        "Paper trading requires SEPARATE keys: generate them at\n"
+                        "https://app.alpaca.markets/ -> Paper Trading -> API Keys\n"
+                        "and set ALPACA_PAPER_KEY_ID / ALPACA_PAPER_SECRET_KEY in .env"
+                    )
+                else:
+                    msg += (
+                        "LIKELY CAUSE: Paper trading keys (ALPACA_PAPER_*) are invalid, expired, or revoked.\n\n"
+                        "FIX: Regenerate keys for this paper account at\n"
+                        "https://app.alpaca.markets/ -> Paper Trading -> API Keys\n"
+                        "and update ALPACA_PAPER_KEY_ID / ALPACA_PAPER_SECRET_KEY in .env\n\n"
+                        "NOTE: Each Alpaca account needs its own keys. Do not copy keys from a different account."
+                    )
+                raise RuntimeError(msg) from e
+            raise RuntimeError(f"Alpaca {method} {path} -> {e.code}: {error_body}") from e
 
     # --- account ---------------------------------------------------------
     def _account(self) -> dict:
