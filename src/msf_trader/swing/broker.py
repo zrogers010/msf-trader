@@ -212,12 +212,10 @@ class AlpacaPaperBroker:
                 else:
                     msg += (
                         "LIKELY CAUSE: Paper trading keys (ALPACA_PAPER_*) are invalid, expired, or revoked.\n\n"
-                        "Fix options:\n"
-                        "1. Regenerate keys at https://app.alpaca.markets/ -> Paper Trading -> API Keys\n"
-                        "   and update ALPACA_PAPER_KEY_ID / ALPACA_PAPER_SECRET_KEY in .env\n"
-                        "2. If your APCA_API_KEY_ID has paper trading permissions, sync:\n"
-                        "   ALPACA_PAPER_KEY_ID=$APCA_API_KEY_ID\n"
-                        "   ALPACA_PAPER_SECRET_KEY=$APCA_API_SECRET_KEY"
+                        "FIX: Regenerate keys for this paper account at\n"
+                        "https://app.alpaca.markets/ -> Paper Trading -> API Keys\n"
+                        "and update ALPACA_PAPER_KEY_ID / ALPACA_PAPER_SECRET_KEY in .env\n\n"
+                        "NOTE: Each Alpaca account needs its own keys. Do not copy keys from a different account."
                     )
                 raise RuntimeError(msg) from e
             raise RuntimeError(f"Alpaca {method} {path} -> {e.code}: {error_body}") from e
